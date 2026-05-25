@@ -1223,14 +1223,14 @@ local nuiService = {
 			local databind <const> = setUpDatabinding(weaponHash, weaponObject)
 			StartAudioSceneset("weapon", "Inspect_Item_Scenes")
 
-			if CONFIG.CLEAN_WEAPON_ITEM then
+			if CONFIG.CLEAN_WEAPON_ITEM ~= nil and CONFIG.CLEAN_WEAPON_ITEM ~= "" then
 				local hasItem, id = PLAYER_INVENTORY:HasItem(CONFIG.CLEAN_WEAPON_ITEM)
 				if weaponStatus.degradation == 1.0 then
 					if not hasItem then
-						CORE.NotifyRightTip("You do not have the required item to clean this weapon", 5000)
+						CORE.NotifyRightTip(LANG.notRequiredItemToClean, 5000)
 					else
 						if not CONFIG.RESTORE_WEAPON_DEGRADATION then
-							CORE.NotifyRightTip("You can't clean this weapon because it's is degraded and cannot be restored", 5000)
+							CORE.NotifyRightTip(LANG.cannotCleanCauseNotDegraded, 5000)
 						end
 					end
 					SetPedBlackboardBool(CACHE.Ped, 'GENERIC_WEAPON_CLEAN_PROMPT_AVAILABLE', false, -1)
