@@ -203,7 +203,7 @@ local InventoryAPI = {
 			end
 		end,
 		--- THIS EXPORT SHOULD ONLY BE USED FOR NORMAL ITEMS NOTHING ELSE for items with decay and metadata use the getUserInventoryItems they are unique items
-		GET_ITEM_COUNT = function(source, itemName, metadata, percentage, cb)
+		GET_ITEM_COUNT = function(source, cb, itemName, metadata, percentage)
 			local _source <const> = source
 			if not _source then
 				error("getItemCount: specify a source")
