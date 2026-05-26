@@ -740,15 +740,19 @@ else
         SetAmbientPickupLifetime(179)
     end
 
-    if CONFIG.REMOVE_LASSO then
-        EVENT:Register("EVENT_ENTITY_HOGTIED", 0, function(data)
-            local hogtierPedId <const> = data[2]
 
-            if hogtierPedId == CACHE.Ped then
-                -- in here we get the lasso used and remove it from player
+    if CONFIG.REMOVE_LASSO then
+        CreateThread(function()
+            repeat Wait(5000) until LocalPlayer.state.IsInSession
+            local lassos <const> = { [`WEAPON_LASSO`] = true, [`WEAPON_LASSO_REINFORCED`] = true }
+
+            local function GetWhoHogtiedPed(ped)
+                return Citizen.InvokeNative(0x3D9F958834AB9C30, ped)
+            end
+
+            local function removeLasso()
                 local lastWeapon <const> = CACHE.LastWeapon
                 local currentWeapon <const> = CACHE.Weapon
-                local lassos <const> = { [`WEAPON_LASSO`] = true, [`WEAPON_LASSO_REINFORCED`] = true }
                 local function getWeapon()
                     if lassos[lastWeapon] then
                         return lastWeapon
@@ -773,7 +777,64 @@ else
                     end
                 end
             end
-        end, true)
+            while true do
+                local sleep = 1000
+                if not CACHE.IsDead and not IS_INV_OPEN and lassos[CACHE.Weapon] then
+                    sleep = 500
+                    local lassoTarget <const> = GetLassoTarget(CACHE.Ped)
+                    if lassoTarget ~= 0 and (IsPedAPlayer(lassoTarget) or IsPedHuman(lassoTarget) == 1) then
+                        local isLassoed <const> = IsPedLassoed(lassoTarget) == 1
+                        if isLassoed then
+                            repeat
+                                Wait(100)
+                                local isHogtying <const> = IsPedHogtying(CACHE.Ped) ~= 0
+                                local isPedBeingHogtied <const> = IsPedBeingHogtied(lassoTarget) ~= 0
+                                if isHogtying and isPedBeingHogtied then
+                                    local isPedHogtied = false
+                                    local timer <const> = GetGameTimer()
+                                    repeat
+                                        Wait(500)
+                                        isPedHogtied = IsPedHogtied(lassoTarget) == 1
+                                    until CACHE.IsDead or isPedHogtied or GetGameTimer() - timer > 20000
+
+                                    if not CACHE.IsDead and isPedHogtied and GetGameTimer() - timer < 20000 then
+                                        local ped <const> = GetWhoHogtiedPed(lassoTarget)
+                                        if ped == CACHE.Ped then
+                                            removeLasso()
+                                        end
+                                    end
+                                    break
+                                end
+                            until CACHE.IsDead or lassoTarget == 0
+                        end
+                    else
+                        local isFreeAiming <const> = IsPlayerFreeAiming(CACHE.Player)
+                        if isFreeAiming then
+                            sleep = 500
+                            local retval <const>, entity <const> = GetEntityPlayerIsFreeAimingAt(CACHE.Player)
+                            if retval and (IsPedHuman(entity) == 1 or IsPedAPlayer(entity)) then
+                                repeat
+                                    Wait(0)
+                                    local isHogtying <const> = IsPedBeingHogtied(entity) ~= 0
+                                    if isHogtying then
+                                        repeat Wait(0) until IsPedBeingHogtied(entity) == 0
+                                    end
+                                until not IsPlayerFreeAiming(CACHE.Player)
+                                Wait(500)
+                                local isPedHogtied <const> = IsPedHogtied(entity) == 1
+                                if isPedHogtied then
+                                    local ped <const> = GetWhoHogtiedPed(entity)
+                                    if ped == CACHE.Ped then
+                                        removeLasso()
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                Wait(sleep)
+            end
+        end)
     end
 
 
