@@ -181,23 +181,13 @@ local inventory <const> = {
 		-- need another loop because of get status method
 		for _, weapon in pairs(PLAYER_INVENTORY.WEAPONS) do
 			if CONFIG.USE_WEAPON_DEGRADATION and (weapon:getUsed() or weapon:getUsed2()) then
-				local weaponStatus <const> = weapon:getStatus()
-				local payload
-				if weaponStatus and next(weaponStatus) then
-					payload = {
-						degradation = weaponStatus.degradation,
-						damage = weaponStatus.damage,
-						dirt = weaponStatus.dirt,
-						soot = weaponStatus.soot,
-					}
-				else
-					payload = {
-						degradation = weapon.degradation,
-						damage = weapon.damage,
-						dirt = weapon.dirt,
-						soot = weapon.soot,
-					}
-				end
+				local payload = {
+					degradation = weapon.degradation,
+					damage = weapon.damage,
+					dirt = weapon.dirt,
+					soot = weapon.soot,
+				}
+
 				LAST_CLIENT_WEAPON_STATUS[weapon:getId()] = json.encode(payload)
 			end
 		end
