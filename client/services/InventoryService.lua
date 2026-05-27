@@ -318,7 +318,7 @@ local inventory <const> = {
 		local key = string.format("GetEquippedWeaponData_%d", weapName)
 		LocalPlayer.state:set(key, info, true)
 
-		TriggerServerEvent("syn_weapons:weaponused", { id = id, name = weapon:getName(), type = "item_weapon" })
+		TriggerServerEvent("syn_weapons:weaponused", { id = id, name = weapon:getName(), type = "item_weapon", hash = weapName })
 		TriggerEvent("vorp_inventory:onWeaponEquipped", weapon:getAllComponents(), id, weapon:getName(), false, weapon.defaultAttachments)
 	end,
 
