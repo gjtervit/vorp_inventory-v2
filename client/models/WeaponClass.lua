@@ -12,6 +12,47 @@ local function getObjectIndexFromPed(weapon)
 	return nil
 end
 
+function GetGuidFromItemId(inventoryId, itemData, category, slotId)
+	local outItem = DataView.ArrayBuffer(8 * 13)
+
+	if not itemData then
+		itemData = 0
+	end
+	--InventoryGetGuidFromItemid
+	local success = Citizen.InvokeNative(0x886DFD3E185C8A89, inventoryId, itemData, category, slotId, outItem:Buffer())
+	if success then
+		return outItem:Buffer() --Seems to not return anythign diff. May need to pull from native above
+	else
+		return nil
+	end
+end
+
+function AddWardrobeInventoryItem(itemName, slotHash)
+	local itemHash    = joaat(itemName)
+	local addReason   = joaat("ADD_REASON_DEFAULT")
+	local inventoryId = 1
+
+	-- _ITEMDATABASE_IS_KEY_VALID
+	local isValid     = Citizen.InvokeNative(0x6D5D51B188333FD1, itemHash, 0) --ItemdatabaseIsKeyValid
+	if not isValid then return end
+
+	local characterItem = GetGuidFromItemId(inventoryId, nil, joaat("CHARACTER"), 0xA1212100)
+	if not characterItem then return end
+
+	local wardrobeItem = GetGuidFromItemId(inventoryId, characterItem, joaat("WARDROBE"), 0x3DABBFA7)
+	if not wardrobeItem then return end
+
+	local itemData = DataView.ArrayBuffer(8 * 13)
+
+	-- _INVENTORY_ADD_ITEM_WITH_GUID
+	local isAdded = Citizen.InvokeNative(0xCB5D11F9508A928D, inventoryId, itemData:Buffer(), wardrobeItem, itemHash, slotHash, 1, addReason)
+	if not isAdded then return end
+
+	-- _INVENTORY_EQUIP_ITEM_WITH_GUID
+	local equipped = Citizen.InvokeNative(0x734311E2852760D0, inventoryId, itemData:Buffer(), true)
+	return equipped
+end
+
 local Weapon <const> = LIB.Class:Create({
 	constructor = function(self, data)
 		local value <const>         = SHARED_DATA.WEAPONS[data.name]
@@ -351,7 +392,7 @@ local Weapon <const> = LIB.Class:Create({
 
 				GiveDelayedWeaponToPed(CACHE.Ped, weaponHash_0, ammoCount, true, 0)
 
-				local weapons = {
+				local weapons <const> = {
 					[`WEAPON_THROWN_BOLAS`] = "AMMO_BOLAS",
 					[`WEAPON_THROWN_BOLAS_HAWKMOTH`] = "AMMO_BOLAS_HAWKMOTH",
 					[`WEAPON_THROWN_BOLAS_INTERTWINED`] = "AMMO_BOLAS_INTERTWINED",
@@ -388,11 +429,13 @@ local Weapon <const> = LIB.Class:Create({
 					if isWeaponAGun and isWeaponOneHanded then
 						self:_addWeapon(self.name, 1, self.id)
 					else
-						local _, weaponHash_1 = GetCurrentPedWeapon(CACHE.Ped, false, 0, false)
-						Citizen.InvokeNative(0x5E3BDDBCB83F3D84, CACHE.Ped, weaponHash_1, 1, 1, 1, 2, false, 0.5, 1.0, 752097756, 0, true, 0.0)
-						Citizen.InvokeNative(0x5E3BDDBCB83F3D84, CACHE.Ped, weaponHash_0, 1, 1, 1, 3, false, 0.5, 1.0, 752097756, 0, true, 0.0)
-						Citizen.InvokeNative(0xADF692B254977C0C, CACHE.Ped, weaponHash_1, 0, 1, 0, 0)
-						Citizen.InvokeNative(0xADF692B254977C0C, CACHE.Ped, weaponHash_0, 0, 0, 0, 0)
+						--DONT THINK THIS IS USED? dual is only for one handed weapons?
+						--local _, weaponHash_1 = GetCurrentPedWeapon(CACHE.Ped, false, 0, false)
+						--local _, weaponHash_1 = GetCurrentPedWeapon(CACHE.Ped, false, 0, false)
+						--GiveWeaponToPed(CACHE.Ped, weaponHash_1, 1, true, true, 2, false, 0.5, 1.0, 752097756, false, 0.0, false)
+						--GiveWeaponToPed(CACHE.Ped, weaponHash_0, 1, true, true, 3, false, 0.5, 1.0, 752097756, false, 0.0, false)
+						--SetCurrentPedWeapon(CACHE.Ped, weaponHash_1, false, 1, false, false)
+						--SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 					end
 				else
 					if isWeaponAGun and isWeaponOneHanded then
@@ -418,6 +461,27 @@ local Weapon <const> = LIB.Class:Create({
 						)
 					end
 					self:loadAmmo()
+				end
+			end
+		end,
+
+		addDualWield          = function(self)
+			if not CONFIG.DUAL_WIELD then return end
+			AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
+			AddWardrobeInventoryItem("UPGRADE_OFFHAND_HOLSTER", 0x39E57B01)
+			if self.used2 then
+				local weaponHash_0 <const>      = joaat(self.name)
+				local isWeaponAGun <const>      = Citizen.InvokeNative(0x705BE297EEBDB95D, weaponHash_0)
+				local isWeaponOneHanded <const> = Citizen.InvokeNative(0xD955FEE4B87AFA07, weaponHash_0)
+				if isWeaponAGun and isWeaponOneHanded then
+					self:_addWeapon(self.name, 1, self.id)
+				else
+					--DONT THINK THIS IS USED? dual is only for one handed weapons
+					--local _, weaponHash_1 = GetCurrentPedWeapon(CACHE.Ped, false, 0, false)
+					--GiveWeaponToPed(CACHE.Ped, weaponHash_1, 1, true, true, 2, false, 0.5, 1.0, 752097756, false, 0.0, false)
+					--GiveWeaponToPed(CACHE.Ped, weaponHash_0, 1, true, true, 3, false, 0.5, 1.0, 752097756, false, 0.0, false)
+					--SetCurrentPedWeapon(CACHE.Ped, weaponHash_1, false, 1, false, false)
+					--SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 				end
 			end
 		end,
