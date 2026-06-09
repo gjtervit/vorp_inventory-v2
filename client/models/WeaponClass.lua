@@ -304,7 +304,9 @@ local Weapon <const> = LIB.Class:Create({
 				TriggerServerEvent("vorpinventory:setUsedWeapon", self.id, self:getUsed(), self:getUsed2())
 			end
 
-			if not IsWeaponLantern then
+			local isLantern = IsWeaponLantern(joaat(self.name)) == 1
+
+			if not isLantern then
 				HolsterPedWeapons(CACHE.Ped, true, false, true, false)
 				Wait(1000)
 				SetCurrentPedWeapon(CACHE.Ped, joaat("WEAPON_UNARMED"), false, 0, false, false)
@@ -418,7 +420,7 @@ local Weapon <const> = LIB.Class:Create({
 					end
 				end
 
-				if IsWeaponLantern(weaponHash_0) then
+				if IsWeaponLantern(weaponHash_0) == 1 then
 					SetTimeout(500, function()
 						SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 					end)
@@ -467,7 +469,7 @@ local Weapon <const> = LIB.Class:Create({
 							0.0,
 							false
 						)
-						if IsWeaponLantern(weaponHash_0) then
+						if IsWeaponLantern(weaponHash_0) == 1 then
 							SetTimeout(500, function()
 								SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 							end)
