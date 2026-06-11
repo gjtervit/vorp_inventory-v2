@@ -297,7 +297,7 @@ local Weapon <const> = LIB.Class:Create({
 			end
 		end,
 
-		UnequipWeapon = function(self, skipTrigger)
+		UnequipWeapon         = function(self, skipTrigger)
 			self:setUsed(false, true)
 			self:setUsed2(false, true)
 			if not skipTrigger then
@@ -363,6 +363,8 @@ local Weapon <const> = LIB.Class:Create({
 			local isWeaponAGun <const>      = Citizen.InvokeNative(0x705BE297EEBDB95D, weaponHash_0)
 			local isWeaponOneHanded <const> = Citizen.InvokeNative(0xD955FEE4B87AFA07, weaponHash_0)
 			local isWeaponPetrolCan         = weaponHash_0 == `WEAPON_MOONSHINEJUG_MP`
+			local isLantern                 = IsWeaponLantern(weaponHash_0) == 1
+			local isFishingRod              = weaponHash_0 == `WEAPON_FISHINGROD`
 			local ammoCount                 = 0
 
 			if SHARED_DATA.WEAPONS[self.name] and SHARED_DATA.WEAPONS[self.name].NoAmmo then
@@ -370,7 +372,7 @@ local Weapon <const> = LIB.Class:Create({
 			end
 
 
-			if isWeaponMelee or isWeaponThrowable or isWeaponPetrolCan then
+			if isWeaponMelee or isWeaponThrowable or isWeaponPetrolCan or isLantern or isFishingRod then
 				if isWeaponPetrolCan then
 					ammoCount = math.max(0, self:getAmmo("AMMO_MOONSHINEJUG_MP"))
 				end
@@ -420,7 +422,7 @@ local Weapon <const> = LIB.Class:Create({
 					end
 				end
 
-				if IsWeaponLantern(weaponHash_0) == 1 then
+				if isLantern or isFishingRod then
 					SetTimeout(500, function()
 						SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 					end)
@@ -469,11 +471,6 @@ local Weapon <const> = LIB.Class:Create({
 							0.0,
 							false
 						)
-						if IsWeaponLantern(weaponHash_0) == 1 then
-							SetTimeout(500, function()
-								SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
-							end)
-						end
 					end
 					self:loadAmmo()
 				end
