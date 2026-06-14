@@ -97,7 +97,7 @@ AddEventHandler('playerDropped', function()
 
         if not user then return end
 
-        charid = user.getUsedCharacter.charIdentifier
+        local currentCharId <const> = user.getUsedCharacter.charIdentifier
         for key, value in pairs(weapons) do
             if value.charId == charid then
                 USERS_WEAPONS.default[key] = nil
