@@ -71,6 +71,7 @@ local function useWeapon(data)
 	end
 
 	if (isWeaponAGun and isWeaponOneHanded) and isArmed and CONFIG.DUAL_WIELD then
+		SetInventoryDualWieldAllowed(ped, true)
 		AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
 		AddWardrobeInventoryItem("UPGRADE_OFFHAND_HOLSTER", 0x39E57B01)
 

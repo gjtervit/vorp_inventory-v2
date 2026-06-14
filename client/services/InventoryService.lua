@@ -14,6 +14,48 @@ PLAYER_INVENTORY = {
 	end,
 }
 
+local function isOneHandedGun(weapon)
+	if not weapon then return false end
+	local weaponHash <const> = joaat(weapon:getName())
+	return Citizen.InvokeNative(0x705BE297EEBDB95D, weaponHash) and Citizen.InvokeNative(0xD955FEE4B87AFA07, weaponHash)
+end
+
+local function refreshDualWieldWheelState(weapons)
+	if not CONFIG.DUAL_WIELD then return end
+
+	local mainWeapon
+	local dualWeapon
+
+	for _, weapon in ipairs(weapons) do
+		if isOneHandedGun(weapon) then
+			if weapon:getUsed2() then
+				dualWeapon = weapon
+			elseif weapon:getUsed() then
+				mainWeapon = weapon
+			end
+		end
+	end
+
+	if not mainWeapon or not dualWeapon then return end
+
+	local mainHash <const> = joaat(mainWeapon:getName())
+	local dualHash <const> = joaat(dualWeapon:getName())
+
+	SetInventoryDualWieldAllowed(CACHE.Ped, true)
+	AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
+	AddWardrobeInventoryItem("UPGRADE_OFFHAND_HOLSTER", 0x39E57B01)
+
+	SetTimeout(500, function()
+		if HasPedGotWeapon(CACHE.Ped, mainHash, 0, false) == 1 then
+			SetCurrentPedWeapon(CACHE.Ped, mainHash, false, 1, false, false)
+		end
+
+		if HasPedGotWeapon(CACHE.Ped, dualHash, 0, false) == 1 then
+			SetCurrentPedWeapon(CACHE.Ped, dualHash, false, 0, false, false)
+		end
+	end)
+end
+
 local inventory <const> = {
 	RECEIVE_ITEM = function(name, id, amount, metadata, degradation, percentage, durability)
 		if not name or not CLIENT_ITEMS[name] then
@@ -139,8 +181,10 @@ local inventory <const> = {
 	GET_LOADOUT = function(loadout)
 		RemoveAllPedWeapons(CACHE.Ped, true, true)
 		RemoveAllPedAmmo(CACHE.Ped)
+		ResetInventoryEquippedWeapons()
 		Wait(1000)
 
+		local weaponsToEquip = {}
 		for _, weapon in ipairs(loadout) do
 			if weapon.currInv == "default" and (weapon.dropped == nil or weapon.dropped == 0) then
 				local newWeapon <const> = WEAPON:Register({
@@ -175,12 +219,29 @@ local inventory <const> = {
 							newWeapon:setUsed(false)
 							newWeapon:setUsed2(false)
 						else
-							INVENTORY_SERVICE.SET_WEAPONS_ON_PLAYER(newWeapon:getId())
+							weaponsToEquip[#weaponsToEquip + 1] = newWeapon
 						end
 					end
 				end
 			end
 		end
+
+		for _, weapon in ipairs(weaponsToEquip) do
+			if weapon:getUsed() and not weapon:getUsed2() then
+				INVENTORY_SERVICE.SET_WEAPONS_ON_PLAYER(weapon:getId())
+				Wait(250)
+			end
+		end
+
+		for _, weapon in ipairs(weaponsToEquip) do
+			if weapon:getUsed2() then
+				INVENTORY_SERVICE.SET_WEAPONS_ON_PLAYER(weapon:getId())
+				Wait(250)
+			end
+		end
+
+		refreshDualWieldWheelState(weaponsToEquip)
+
 		Wait(2000)
 
 		if CONFIG.USE_WEAPON_DEGRADATION then
@@ -285,6 +346,15 @@ local inventory <const> = {
 		local isMelee <const> = IsWeaponMeleeWeapon(weaponHash) == 1
 		local isThrowable <const> = IsWeaponThrowable(weaponHash) == 1
 		local isPetrolCan <const> = GetWeapontypeGroup(weaponHash) == joaat("GROUP_PETROLCAN")
+		local isWeaponAGun <const> = Citizen.InvokeNative(0x705BE297EEBDB95D, weaponHash)
+		local isWeaponOneHanded <const> = Citizen.InvokeNative(0xD955FEE4B87AFA07, weaponHash)
+
+		if weapon:getUsed2() and isWeaponAGun and isWeaponOneHanded and CONFIG.DUAL_WIELD then
+			SetInventoryDualWieldAllowed(CACHE.Ped, true)
+			AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
+			AddWardrobeInventoryItem("UPGRADE_OFFHAND_HOLSTER", 0x39E57B01)
+			Wait(250)
+		end
 
 		if isMelee or isThrowable or isPetrolCan then
 			local ammoCount = 1
@@ -305,6 +375,8 @@ local inventory <const> = {
 			if GetGameTimer() - timer > 10000 then
 				print("weapon not on ped after 10 seconds")
 			end
+		elseif isWeaponAGun and isWeaponOneHanded then
+			weapon:equipwep()
 		else
 			GiveWeaponToPed( -- doesnt work with throwables?
 				CACHE.Ped,
@@ -344,14 +416,15 @@ local inventory <const> = {
 				until HasPedGotWeapon(CACHE.Ped, weaponHash, 0, false) == 1
 			end
 
-			if not isMelee and not isThrowable then
-				weapon:setDefaultAttachments()
-				weapon:loadAmmo()
-				weapon:loadComponents()
-				SetTimeout(2000, function()
-					weapon:setStatus()
-				end)
-			end
+		end
+
+		if not isMelee and not isThrowable and not isPetrolCan then
+			weapon:setDefaultAttachments()
+			weapon:loadAmmo()
+			weapon:loadComponents()
+			SetTimeout(2000, function()
+				weapon:setStatus()
+			end)
 		end
 
 		local serial = weapon:getSerialNumber()
@@ -361,7 +434,7 @@ local inventory <const> = {
 		LocalPlayer.state:set(key, info, true)
 
 		TriggerServerEvent("syn_weapons:weaponused", { id = id, name = weapon:getName(), type = "item_weapon", hash = weapName })
-		TriggerEvent("vorp_inventory:onWeaponEquipped", weapon:getAllComponents(), id, weapon:getName(), false, weapon.defaultAttachments)
+		TriggerEvent("vorp_inventory:onWeaponEquipped", weapon:getAllComponents(), id, weapon:getName(), weapon:getUsed2(), weapon.defaultAttachments)
 	end,
 
 	GET_INVENTORY = function(inventory)

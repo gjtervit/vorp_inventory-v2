@@ -13,6 +13,10 @@ function IsNonAmmoThrowableWeapon(weapon)
 	return weaponName and NON_AMMO_THROWABLES[weaponName] == true
 end
 
+function ResetInventoryEquippedWeapons()
+	table.wipe(_EQUIPPED)
+end
+
 local function getObjectIndexFromPed(weapon)
 	for attachPoint = 0, 29 do
 		local _, _weapon <const> = GetCurrentPedWeapon(CACHE.Ped, true, attachPoint, false)
@@ -63,6 +67,12 @@ function AddWardrobeInventoryItem(itemName, slotHash)
 	-- _INVENTORY_EQUIP_ITEM_WITH_GUID
 	local equipped = Citizen.InvokeNative(0x734311E2852760D0, inventoryId, itemData:Buffer(), true)
 	return equipped
+end
+
+function SetInventoryDualWieldAllowed(ped, allow)
+	if SetAllowDualWield then
+		SetAllowDualWield(ped, allow)
+	end
 end
 
 local Weapon <const> = LIB.Class:Create({
@@ -527,6 +537,7 @@ local Weapon <const> = LIB.Class:Create({
 
 		addDualWield          = function(self)
 			if not CONFIG.DUAL_WIELD then return end
+			SetInventoryDualWieldAllowed(CACHE.Ped, true)
 			AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
 			AddWardrobeInventoryItem("UPGRADE_OFFHAND_HOLSTER", 0x39E57B01)
 			if self.used2 then
