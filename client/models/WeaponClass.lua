@@ -1,5 +1,17 @@
 local LIB <const> = Import 'class' --[[@as CLASS]]
 local _EQUIPPED <const> = {}
+local NON_AMMO_THROWABLES <const> = {
+	WEAPON_MELEE_CLEAVER = true,
+	WEAPON_MELEE_HATCHET = true,
+	WEAPON_MELEE_HATCHET_HUNTER = true,
+}
+
+function IsNonAmmoThrowableWeapon(weapon)
+	if not weapon then return false end
+
+	local weaponName = type(weapon) == "string" and weapon or GetWeaponName(weapon)
+	return weaponName and NON_AMMO_THROWABLES[weaponName] == true
+end
 
 local function getObjectIndexFromPed(weapon)
 	for attachPoint = 0, 29 do
@@ -314,9 +326,11 @@ local Weapon <const> = LIB.Class:Create({
 
 			self:RemoveWeaponFromPed()
 
-			SetPedAmmo(CACHE.Ped, joaat(self.name), 0)
-			for k, _ in pairs(self:getAllAmmo()) do
-				SetPedAmmoByType(CACHE.Ped, joaat(k), 0)
+			if CONFIG.MANUAL_WEAPON_RELOAD then
+				SetPedAmmo(CACHE.Ped, joaat(self.name), 0)
+				for k, _ in pairs(self:getAllAmmo()) do
+					SetPedAmmoByType(CACHE.Ped, joaat(k), 0)
+				end
 			end
 		end,
 
@@ -362,9 +376,7 @@ local Weapon <const> = LIB.Class:Create({
 			local isWeaponThrowable <const> = Citizen.InvokeNative(0x30E7C16B12DA8211, weaponHash_0)
 			local isWeaponAGun <const>      = Citizen.InvokeNative(0x705BE297EEBDB95D, weaponHash_0)
 			local isWeaponOneHanded <const> = Citizen.InvokeNative(0xD955FEE4B87AFA07, weaponHash_0)
-			local isWeaponPetrolCan         = weaponHash_0 == `WEAPON_MOONSHINEJUG_MP`
-			local isLantern                 = IsWeaponLantern(weaponHash_0) == 1
-			local isFishingRod              = weaponHash_0 == `WEAPON_FISHINGROD`
+			local isWeaponPetrolCan         = CONFIG.MANUAL_WEAPON_RELOAD and weaponHash_0 == `WEAPON_MOONSHINEJUG_MP` or not CONFIG.MANUAL_WEAPON_RELOAD and GetWeapontypeGroup(weaponHash_0) == joaat("GROUP_PETROLCAN")
 			local ammoCount                 = 0
 
 			if SHARED_DATA.WEAPONS[self.name] and SHARED_DATA.WEAPONS[self.name].NoAmmo then
@@ -372,7 +384,34 @@ local Weapon <const> = LIB.Class:Create({
 			end
 
 
-			if isWeaponMelee or isWeaponThrowable or isWeaponPetrolCan or isLantern or isFishingRod then
+			if isWeaponMelee or isWeaponThrowable or isWeaponPetrolCan then
+				local throwableAmmoTypes <const> = {
+					[`WEAPON_THROWN_BOLAS`] = "AMMO_BOLAS",
+					[`WEAPON_THROWN_BOLAS_HAWKMOTH`] = "AMMO_BOLAS_HAWKMOTH",
+					[`WEAPON_THROWN_BOLAS_INTERTWINED`] = "AMMO_BOLAS_INTERTWINED",
+					[`WEAPON_THROWN_BOLAS_IRONSPIKED`] = "AMMO_BOLAS_IRONSPIKED",
+					[`WEAPON_THROWN_TOMAHAWK`] = "AMMO_TOMAHAWK",
+					[`WEAPON_THROWN_TOMAHAWK_ANCIENT`] = "AMMO_TOMAHAWK",
+					[`WEAPON_THROWN_MOLOTOV`] = "AMMO_MOLOTOV",
+					[`WEAPON_THROWN_POISONBOTTLE`] = "AMMO_POISONBOTTLE",
+					[`WEAPON_THROWN_DYNAMITE`] = "AMMO_DYNAMITE",
+				}
+				local throwableAmmoType <const> = throwableAmmoTypes[weaponHash_0]
+
+				if not CONFIG.MANUAL_WEAPON_RELOAD then
+					ammoCount = IsNonAmmoThrowableWeapon(self.name) and 1 or 0
+
+					GiveDelayedWeaponToPed(CACHE.Ped, weaponHash_0, ammoCount, true, 0)
+
+					if IsWeaponLantern(weaponHash_0) == 1 then
+						SetTimeout(500, function()
+							SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
+						end)
+					end
+
+					return
+				end
+
 				if isWeaponPetrolCan then
 					ammoCount = math.max(0, self:getAmmo("AMMO_MOONSHINEJUG_MP"))
 				end
@@ -398,21 +437,9 @@ local Weapon <const> = LIB.Class:Create({
 
 				GiveDelayedWeaponToPed(CACHE.Ped, weaponHash_0, ammoCount, true, 0)
 
-				local weapons <const> = {
-					[`WEAPON_THROWN_BOLAS`] = "AMMO_BOLAS",
-					[`WEAPON_THROWN_BOLAS_HAWKMOTH`] = "AMMO_BOLAS_HAWKMOTH",
-					[`WEAPON_THROWN_BOLAS_INTERTWINED`] = "AMMO_BOLAS_INTERTWINED",
-					[`WEAPON_THROWN_BOLAS_IRONSPIKED`] = "AMMO_BOLAS_IRONSPIKED",
-					[`WEAPON_THROWN_TOMAHAWK`] = "AMMO_TOMAHAWK",
-					[`WEAPON_THROWN_TOMAHAWK_ANCIENT`] = "AMMO_TOMAHAWK",
-					[`WEAPON_THROWN_MOLOTOV`] = "AMMO_MOLOTOV",
-					[`WEAPON_THROWN_POISONBOTTLE`] = "AMMO_POISONBOTTLE",
-					[`WEAPON_THROWN_DYNAMITE`] = "AMMO_DYNAMITE",
-				}
-
-				if weapons[weaponHash_0] then
+				if throwableAmmoType and CONFIG.MANUAL_WEAPON_RELOAD then
 					-- this is needed somehow the game saves last ammo and when we add 1 it makes it 2
-					local ammoType <const> = weapons[weaponHash_0]
+					local ammoType <const> = throwableAmmoType
 					local ammoInWeapon <const> = GetAmmoInPedWeapon(CACHE.Ped, weaponHash_0)
 					local keepInWeapon <const> = 1
 					if ammoInWeapon > keepInWeapon then
@@ -422,7 +449,7 @@ local Weapon <const> = LIB.Class:Create({
 					end
 				end
 
-				if isLantern or isFishingRod then
+				if IsWeaponLantern(weaponHash_0) == 1 then
 					SetTimeout(500, function()
 						SetCurrentPedWeapon(CACHE.Ped, weaponHash_0, false, 0, false, false)
 					end)
@@ -437,6 +464,27 @@ local Weapon <const> = LIB.Class:Create({
 					end
 				end
 			else
+				if not CONFIG.MANUAL_WEAPON_RELOAD then
+					if self.used2 then
+						if isWeaponAGun and isWeaponOneHanded then
+							self:_addWeapon(self.name, 1, self.id)
+						else
+							local _, weaponHash_1 = GetCurrentPedWeapon(CACHE.Ped, false, 0, false)
+							Citizen.InvokeNative(0x5E3BDDBCB83F3D84, CACHE.Ped, weaponHash_1, 1, 1, 1, 2, false, 0.5, 1.0, 752097756, 0, true, 0.0)
+							Citizen.InvokeNative(0x5E3BDDBCB83F3D84, CACHE.Ped, weaponHash_0, 1, 1, 1, 3, false, 0.5, 1.0, 752097756, 0, true, 0.0)
+							Citizen.InvokeNative(0xADF692B254977C0C, CACHE.Ped, weaponHash_1, 0, 1, 0, 0)
+							Citizen.InvokeNative(0xADF692B254977C0C, CACHE.Ped, weaponHash_0, 0, 0, 0, 0)
+						end
+					else
+						if isWeaponAGun and isWeaponOneHanded then
+							self:_addWeapon(self.name, 0, self.id)
+						else
+							GiveDelayedWeaponToPed(CACHE.Ped, weaponHash_0, ammoCount, true, 0)
+						end
+					end
+					return
+				end
+
 				if self.used2 then
 					if isWeaponAGun and isWeaponOneHanded then
 						self:_addWeapon(self.name, 1, self.id)
@@ -645,13 +693,13 @@ local Weapon <const> = LIB.Class:Create({
 		-- FOR BULLETS ONLY
 		-- can only be used if player has the weapon in hand
 		addAmmoToClip        = function(self, type, amount, skipTrigger)
-			if not self.ammo[type] then
-				self.ammo[type] = amount
-			end
+			local currentAmount <const> = tonumber(self.ammo[type]) or 0
+			amount = tonumber(amount) or 0
+
 			if self.defaultClipSize > 0 then
-				self.ammo[type] = math.min(self.ammo[type] + amount, self.defaultClipSize)
+				self.ammo[type] = math.min(currentAmount + amount, self.defaultClipSize)
 			else
-				self.ammo[type] = self.ammo[type] + amount
+				self.ammo[type] = currentAmount + amount
 			end
 			-- update server when we reload
 			if not skipTrigger then
@@ -678,6 +726,17 @@ local Weapon <const> = LIB.Class:Create({
 
 		-- called once on player load
 		loadAmmo             = function(self)
+			if not CONFIG.MANUAL_WEAPON_RELOAD then return end
+
+			local weaponHash <const> = joaat(self.name)
+			local ammoTypes <const> = SHARED_DATA.AMMO_TYPES[GetWeapontypeGroup(weaponHash)]
+			if ammoTypes then
+				SetPedAmmo(CACHE.Ped, weaponHash, 0)
+				for type, _ in pairs(ammoTypes) do
+					SetPedAmmoByType(CACHE.Ped, joaat(type), 0)
+				end
+			end
+
 			-- need a config to disable certain ammo types from weapons like dynamite etc
 			--	DisableAmmoTypeForPedWeapon(CACHE.Ped, joaat(self.name), joaat(type))
 			for type, amount in pairs(self.ammo) do

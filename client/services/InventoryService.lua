@@ -89,13 +89,14 @@ local inventory <const> = {
 		})
 
 
-		local isPetrolCan = GetWeapontypeGroup(name) == joaat("GROUP_PETROLCAN")
+		local weaponHash <const> = joaat(name)
+		local isPetrolCan = GetWeapontypeGroup(weaponHash) == joaat("GROUP_PETROLCAN")
 		if isPetrolCan then
 			local defaultClipSize <const> = SHARED_DATA.WEAPONS[name] and SHARED_DATA.WEAPONS[name].DefaultClipSize or 20
 			newWeapon:addAmmo("AMMO_MOONSHINEJUG_MP", defaultClipSize)
 		end
 
-		local isGun = IsWeaponAGun(name) == 1
+		local isGun = IsWeaponAGun(weaponHash) == 1
 		if isGun then
 			newWeapon:setDefaultAttachments()
 			newWeapon:loadAmmo()
@@ -167,7 +168,10 @@ local inventory <const> = {
 
 				if CONFIG.AUTO_EQUIP_USED_WEAPONS then
 					if newWeapon:getUsed() or newWeapon:getUsed2() then
-						if INVENTORY_SERVICE.IS_WEAPON_EQUIP_BLOCKED_BY_LIMIT(newWeapon:getId(), newWeapon:getName()) then
+						if not CONFIG.MANUAL_WEAPON_RELOAD and IsWeaponThrowable(joaat(newWeapon:getName())) == 1 then
+							newWeapon:setUsed(false)
+							newWeapon:setUsed2(false)
+						elseif INVENTORY_SERVICE.IS_WEAPON_EQUIP_BLOCKED_BY_LIMIT(newWeapon:getId(), newWeapon:getName()) then
 							newWeapon:setUsed(false)
 							newWeapon:setUsed2(false)
 						else
@@ -249,6 +253,26 @@ local inventory <const> = {
 	SET_WEAPON_USED = function(id, used)
 		local weapon <const> = PLAYER_INVENTORY.WEAPONS[id]
 		if not weapon then return end
+		local weaponHash <const> = joaat(weapon:getName())
+		if used and not CONFIG.MANUAL_WEAPON_RELOAD then
+			local throwableAmmoType <const> = AMMO_SERVICE.GET_THROWABLE_AMMO_TYPE(weaponHash)
+			if throwableAmmoType then
+				local ammoCount = AMMO_SERVICE.GET_GUNBELT_AMMO(throwableAmmoType)
+				if ammoCount == nil then
+					ammoCount = GetPedAmmoByType(CACHE.Ped, joaat(throwableAmmoType))
+				end
+
+				if (tonumber(ammoCount) or 0) <= 0 then
+					CORE.NotifyRightTip("You need ammo in your gunbelt first", 3000)
+					weapon:setUsed(false, true)
+					weapon:setUsed2(false, true)
+					RemoveWeaponFromPed(CACHE.Ped, weaponHash, true, 0)
+					TriggerServerEvent("vorpinventory:setUsedWeapon", id, false, false)
+					NUI_SERVICE.INVENTORY.UPDATE_WEAPON(id)
+					return
+				end
+			end
+		end
 		weapon:setUsed(used)
 		NUI_SERVICE.INVENTORY.UPDATE_WEAPON(id)
 		weapon:equipwep()
@@ -257,13 +281,15 @@ local inventory <const> = {
 		local weapon <const> = PLAYER_INVENTORY.WEAPONS[id]
 		if not weapon then return print("Weapon not found 1") end
 
-		local isMelee <const> = IsWeaponMeleeWeapon(weapon:getName()) == 1
-		local isThrowable <const> = IsWeaponThrowable(weapon:getName()) == 1
-		local isPetrolCan <const> = GetWeapontypeGroup(weapon:getName()) == joaat("GROUP_PETROLCAN")
+		local weaponHash <const> = joaat(weapon:getName())
+		local isMelee <const> = IsWeaponMeleeWeapon(weaponHash) == 1
+		local isThrowable <const> = IsWeaponThrowable(weaponHash) == 1
+		local isPetrolCan <const> = GetWeapontypeGroup(weaponHash) == joaat("GROUP_PETROLCAN")
 
 		if isMelee or isThrowable or isPetrolCan then
 			local ammoCount = 1
-			if joaat(weapon:getName()) == `WEAPON_THROWN_THROWING_KNIVES` then
+
+			if weaponHash == `WEAPON_THROWN_THROWING_KNIVES` then
 				ammoCount = weapon:getAmmo("AMMO_THROWING_KNIVES")
 			end
 
@@ -273,16 +299,16 @@ local inventory <const> = {
 				ammoCount = weapon:getAmmo("AMMO_MOONSHINEJUG_MP")
 			end
 
-			GiveWeaponToPed(CACHE.Ped, joaat(weapon:getName()), ammoCount, false, true, 0, false, 0.5, 1.0, 0, false, 0.0, false)
+			GiveWeaponToPed(CACHE.Ped, weaponHash, ammoCount, false, true, 0, false, 0.5, 1.0, 0, false, 0.0, false)
 			local timer = GetGameTimer()
-			repeat Wait(0) until HasPedGotWeapon(CACHE.Ped, joaat(weapon:getName()), 0, false) == 1 or GetGameTimer() - timer > 10000
+			repeat Wait(0) until HasPedGotWeapon(CACHE.Ped, weaponHash, 0, false) == 1 or GetGameTimer() - timer > 10000
 			if GetGameTimer() - timer > 10000 then
 				print("weapon not on ped after 10 seconds")
 			end
 		else
 			GiveWeaponToPed( -- doesnt work with throwables?
 				CACHE.Ped,
-				joaat(weapon:getName()),
+				weaponHash,
 				0,
 				false,
 				true,
@@ -296,12 +322,12 @@ local inventory <const> = {
 				false
 			)
 
-			if HasPedGotWeapon(CACHE.Ped, joaat(weapon:getName()), 0, false) ~= 1 then
+			if HasPedGotWeapon(CACHE.Ped, weaponHash, 0, false) ~= 1 then
 				repeat
 					Wait(500)
 					GiveWeaponToPed(
 						CACHE.Ped,
-						joaat(weapon:getName()),
+						weaponHash,
 						0,
 						false,
 						true,
@@ -314,8 +340,8 @@ local inventory <const> = {
 						0.0,
 						false
 					)
-					print(HasPedGotWeapon(CACHE.Ped, joaat(weapon:getName()), 0, false))
-				until HasPedGotWeapon(CACHE.Ped, joaat(weapon:getName()), 0, false) == 1
+					print(HasPedGotWeapon(CACHE.Ped, weaponHash, 0, false))
+				until HasPedGotWeapon(CACHE.Ped, weaponHash, 0, false) == 1
 			end
 
 			if not isMelee and not isThrowable then
@@ -330,7 +356,7 @@ local inventory <const> = {
 
 		local serial = weapon:getSerialNumber()
 		local info = { weaponId = id, serialNumber = serial }
-		local weapName = joaat(weapon:getName())
+		local weapName = weaponHash
 		local key = string.format("GetEquippedWeaponData_%d", weapName)
 		LocalPlayer.state:set(key, info, true)
 

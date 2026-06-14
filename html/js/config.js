@@ -6,6 +6,7 @@ Config.AddDollarItem = false;
 Config.UseRolItem = false;
 Config.AddRollItem = false;
 Config.AddAmmoItem = false;
+Config.ManualWeaponReload = false;
 Config.WeightMeasure = "kg";
 Config.MaxItemTransferAmount = 200;
 Config.EnableCopySerial = true;

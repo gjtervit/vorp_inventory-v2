@@ -101,7 +101,7 @@ SHARED_DATA.WEAPONS                      = {
         IsThrowable = true,
     },
     WEAPON_MELEE_HATCHET = {
-        Name = "Hachet",
+        Name = "Hatchet",
         Desc = "A piece of wood with a blade",
         AttachPoint = "",
         HashName = "WEAPON_MELEE_HATCHET",
@@ -112,7 +112,7 @@ SHARED_DATA.WEAPONS                      = {
         IsThrowable = true,
     },
     WEAPON_MELEE_HATCHET_DOUBLE_BIT = {
-        Name = "Hachet Double Bit",
+        Name = "Hatchet Double Bit",
         Desc = "A Piece of wood with twice the blade",
         AttachPoint = "",
         HashName = "WEAPON_MELEE_HATCHET_DOUBLE_BIT",
@@ -123,7 +123,7 @@ SHARED_DATA.WEAPONS                      = {
         IsThrowable = true,
     },
     WEAPON_MELEE_HATCHET_HEWING = {
-        Name = "Hachet Hewing",
+        Name = "Hatchet Hewing",
         Desc = "Some say this hatchet is magical",
         AttachPoint = "",
         HashName = "WEAPON_MELEE_HATCHET_HEWING",
@@ -134,7 +134,7 @@ SHARED_DATA.WEAPONS                      = {
         IsThrowable = true,
     },
     WEAPON_MELEE_HATCHET_HUNTER = {
-        Name = "Hachet Hunter",
+        Name = "Hatchet Hunter",
         Desc = "A Hunters bestfriend",
         AttachPoint = "",
         HashName = "WEAPON_MELEE_HATCHET_HUNTER",
@@ -145,7 +145,7 @@ SHARED_DATA.WEAPONS                      = {
         IsThrowable = true,
     },
     WEAPON_MELEE_HATCHET_VIKING = {
-        Name = "Hachet Viking",
+        Name = "Hatchet Viking",
         Desc = "Smells of fish and salt",
         AttachPoint = "",
         HashName = "WEAPON_MELEE_HATCHET_VIKING",
@@ -607,7 +607,7 @@ SHARED_DATA.WEAPONS                      = {
         },
     },
     WEAPON_REPEATER_HENRY = {
-        Name = "Henry Reapeater",
+        Name = "Henry Repeater",
         Desc = " lever-action tubular magazine rifle",
         AttachPoint = "",
         HashName = "WEAPON_REPEATER_HENRY",
@@ -676,7 +676,7 @@ SHARED_DATA.WEAPONS                      = {
         },
     },
     WEAPON_REPEATER_CARBINE = {
-        Name = "Carabine Reapeater",
+        Name = "Carbine Repeater",
         Desc =
         "A reliable and popular repeating rifle, the Buck Carbine provides medium damage and a decent firing rate",
         AttachPoint = "",
@@ -854,7 +854,7 @@ SHARED_DATA.WEAPONS                      = {
         },
     },
     WEAPON_RIFLE_BOLTACTION = {
-        Name = "BoltAction Rifle",
+        Name = "Bolt Action Rifle",
         Desc = "manual firearm action that is operated by directly manipulating the bolt",
         AttachPoint = "",
         HashName = "WEAPON_RIFLE_BOLTACTION",

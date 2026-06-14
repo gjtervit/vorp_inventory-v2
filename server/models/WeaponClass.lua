@@ -189,14 +189,13 @@ local Weapon <const> = LIB.Class:Create({
 		end,
 		-- when we reload
 		addAmmoToClip        = function(self, type, amount)
-			if not self.ammo[type] then
-				self.ammo[type] = amount
-			end
+			local currentAmount <const> = tonumber(self.ammo[type]) or 0
+			amount = tonumber(amount) or 0
 
 			if self.defaultClipSize > 0 then
-				self.ammo[type] = math.min(self.ammo[type] + amount, self.defaultClipSize)
+				self.ammo[type] = math.min(currentAmount + amount, self.defaultClipSize)
 			else
-				self.ammo[type] = self.ammo[type] + amount
+				self.ammo[type] = currentAmount + amount
 			end
 		end,
 

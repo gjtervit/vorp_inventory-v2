@@ -164,10 +164,10 @@ SHARED_DATA.AMMO_LABEL     = {
     AMMO_MOLOTOV_VOLATILE = "Volatile Molotov",
     AMMO_HATCHET_CLEAVER = "Cleaver Hatchet",
     AMMO_HATCHET_HUNTER = "Hunter Hatchet",
-    AMMO_HATCHET_DOUBLE_BIT = "Hachet Double Bit",
-    AMMO_HATCHET_HEWING = "Hachet Hewing",
-    AMMO_HATCHET_VIKING = "Hachet Viking",
-    AMMO_HATCHET = "Hatchet ammo",
+    AMMO_HATCHET_DOUBLE_BIT = "Hatchet Double Bit",
+    AMMO_HATCHET_HEWING = "Hatchet Hewing",
+    AMMO_HATCHET_VIKING = "Hatchet Viking",
+    AMMO_HATCHET = "Hatchet Ammo",
     AMMO_MOONSHINEJUG_MP = "Moonshine Liters",
 }
 

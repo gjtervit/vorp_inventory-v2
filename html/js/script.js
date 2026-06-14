@@ -409,6 +409,33 @@ const UTILS = {
         return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
     },
 
+    GET_WEAPON_GUNBELT_DISPLAY_COUNT: function (item) {
+        if (!item || item.type !== "item_weapon" || !allplayerammo) return 0;
+
+        const preferred = item.current_ammo_type != null ? String(item.current_ammo_type) : null;
+        const ammoAllowed = Array.isArray(item.ammoAllowed) ? item.ammoAllowed.map(String).sort() : [];
+        const ammoKeys = item.ammo && typeof item.ammo === "object" && !Array.isArray(item.ammo)
+            ? Object.keys(item.ammo).sort()
+            : [];
+
+        const candidates = [];
+        if (preferred) candidates.push(preferred);
+        for (const ammoType of ammoAllowed) {
+            if (!candidates.includes(ammoType)) candidates.push(ammoType);
+        }
+        for (const ammoType of ammoKeys) {
+            if (!candidates.includes(ammoType)) candidates.push(ammoType);
+        }
+
+        for (const ammoType of candidates) {
+            if (!Object.prototype.hasOwnProperty.call(allplayerammo, ammoType)) continue;
+            const n = Number(allplayerammo[ammoType]);
+            if (Number.isFinite(n) && n > 0) return Math.floor(n);
+        }
+
+        return 0;
+    },
+
 }
 
 const INVENTORY = {
@@ -439,8 +466,11 @@ const INVENTORY = {
         },
 
         GET_AMMO_COUNT: function (item) {
-            const cur = UTILS.GET_WEAPON_AMMO_DISPLAY_COUNT(item);
+            const cur = Config.ManualWeaponReload
+                ? UTILS.GET_WEAPON_AMMO_DISPLAY_COUNT(item)
+                : UTILS.GET_WEAPON_GUNBELT_DISPLAY_COUNT(item);
             const clip = this.GET_CLIP_SIZE(item);
+            if (!Config.ManualWeaponReload) return String(cur);
             if (clip > 0) return cur + "/" + clip;
             return String(cur);
         },
@@ -471,6 +501,7 @@ const INVENTORY = {
 
         ADD_AMMO: function ($root, item, opts) {
             opts = opts || {};
+            if (!Config.ManualWeaponReload) return;
             if (!item || item.type !== "item_weapon") return;
             if (!INVENTORY.WEAPON.SHOW_AMMO_UI(item)) return;
 
@@ -514,6 +545,7 @@ const INVENTORY = {
         },
 
         ADD_WEAPON: function (item) {
+            if (!Config.ManualWeaponReload) return "";
             if (!item || item.type !== "item_weapon") return "";
             if (!INVENTORY.WEAPON.SHOW_AMMO_UI(item)) return "";
 
@@ -1135,4 +1167,3 @@ const INVENTORY = {
         isOpen = false;
     }
 }
-

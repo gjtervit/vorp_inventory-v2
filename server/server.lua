@@ -32,10 +32,50 @@ RegisterServerEvent("vorpinventory:netduplog", function()
     end
 end)
 
+local function savePlayerAmmoOnDrop(source, character)
+    if not DB_SERVICE or not DB_SERVICE.AWAIT or not USERS_AMMO_DATA then return end
+
+    local ammoData <const> = USERS_AMMO_DATA[source]
+    if not ammoData or not ammoData.ammo then return end
+
+    local charidentifier <const> = ammoData.charidentifier or (character and character.charIdentifier)
+    if not charidentifier then return end
+
+    local query <const> = "UPDATE characters SET ammo=@ammo WHERE charidentifier=@charidentifier"
+    local params <const> = { charidentifier = charidentifier, ammo = json.encode(ammoData.ammo) }
+    DB_SERVICE.AWAIT.QUERY(query, params)
+end
+
+local function savePlayerWeaponAmmoOnDrop(charid)
+    if not CONFIG.MANUAL_WEAPON_RELOAD then return end
+    if not DB_SERVICE or not DB_SERVICE.AWAIT or not USERS_WEAPONS or not USERS_WEAPONS.default then return end
+    if not charid then return end
+
+    for _, weapon in pairs(USERS_WEAPONS.default) do
+        if weapon.charId == charid and weapon.currInv == "default" then
+            local id <const> = weapon:getId()
+            local encodedAmmo <const> = json.encode(weapon:getAllAmmo())
+            local query <const> = "UPDATE loadout SET ammo=@ammo WHERE id=@id"
+            local params <const> = { ammo = encodedAmmo, id = id }
+
+            DB_SERVICE.AWAIT.QUERY(query, params)
+            if LAST_SAVED_WEAPON_AMMO then
+                LAST_SAVED_WEAPON_AMMO[id] = encodedAmmo
+            end
+        end
+    end
+end
+
 AddEventHandler('playerDropped', function()
     local _source <const> = source
     if _source then
-        local user <const>    = CORE.getUser(_source)
+        local user          <const> = CORE.getUser(_source)
+        local character     <const> = user and user.getUsedCharacter or nil
+        local ammoData      <const> = USERS_AMMO_DATA and USERS_AMMO_DATA[_source] or nil
+        local charid        <const> = character and character.charIdentifier or ammoData and ammoData.charidentifier
+
+        savePlayerAmmoOnDrop(_source, character)
+        savePlayerWeaponAmmoOnDrop(charid)
 
         local weapons <const> = USERS_WEAPONS.default
 
@@ -57,7 +97,7 @@ AddEventHandler('playerDropped', function()
 
         if not user then return end
 
-        local charid <const> = user.getUsedCharacter.charIdentifier
+        charid = user.getUsedCharacter.charIdentifier
         for key, value in pairs(weapons) do
             if value.charId == charid then
                 USERS_WEAPONS.default[key] = nil
@@ -194,7 +234,7 @@ if CONFIG.USE_RELOAD_SPEEDS then
         elseif weaponName == "WEAPON_PISTOL_MAUSER" then
             extraXml = [[
            <ShortArmHolsterDOF value="2" />]]
-        elseif weaponName == "WEAPON_SNIPERRIFLE_CARCANO" then
+        elseif weaponName == "WEAPON_SNIPERRIFLE_CARCANO" or weaponName == "WEAPON_SNIPERRIFLE_ROLLINGBLOCK" then
             -- we remove a flag to allow toggle scope for carcano credits to mosquitoman
             extraXml = [[
             <WeaponFlags>

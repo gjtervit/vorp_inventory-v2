@@ -666,17 +666,19 @@ local InventoryService <const> = {
 				return
 			end
 
-			if not SHARED_DATA.MAX_AMMO[ammotype] then
-				return print("ammotype not found :", ammotype)
-			end
+			if CONFIG.MANUAL_WEAPON_RELOAD then
+				if not SHARED_DATA.MAX_AMMO[ammotype] then
+					return print("ammotype not found :", ammotype)
+				end
 
-			if maxcount ~= SHARED_DATA.MAX_AMMO[ammotype] then
-				return -- max count was modified in client side
-			end
+				if maxcount ~= SHARED_DATA.MAX_AMMO[ammotype] then
+					return -- max count was modified in client side
+				end
 
-			-- check if ammount is allowed
-			if amount > SHARED_DATA.MAX_AMMO[ammotype] then
-				return CORE.NotifyRightTip(_source, LANG.amountGreaterThanMaxAllowed, 2000)
+				-- check if ammount is allowed
+				if amount > SHARED_DATA.MAX_AMMO[ammotype] then
+					return CORE.NotifyRightTip(_source, LANG.amountGreaterThanMaxAllowed, 2000)
+				end
 			end
 
 			local userAmmoData <const> = USERS_AMMO_DATA[_source]
@@ -702,8 +704,12 @@ local InventoryService <const> = {
 				return
 			end
 
-			if (player2ammo + amount) > SHARED_DATA.MAX_AMMO[ammotype] then
+			local maxAmmo <const> = CONFIG.MANUAL_WEAPON_RELOAD and SHARED_DATA.MAX_AMMO[ammotype] or maxcount
+			if (player2ammo + amount) > maxAmmo then
 				CORE.NotifyRightTip(_source, LANG.fullammoyou, 2000)
+				if not CONFIG.MANUAL_WEAPON_RELOAD then
+					CORE.NotifyRightTip(target, LANG.fullammo, 2000)
+				end
 				TriggerClientEvent("vorp_inventory:ProcessingReady", _source)
 				return
 			end
@@ -712,8 +718,13 @@ local InventoryService <const> = {
 				return
 			end
 
-			userAmmoData.ammo[ammotype] = math.max(0, player1ammo - amount)
-			targetAmmoData.ammo[ammotype] = math.max(0, player2ammo + amount)
+			if not CONFIG.MANUAL_WEAPON_RELOAD then
+				userAmmoData.ammo[ammotype] = userAmmoData.ammo[ammotype] - amount
+				targetAmmoData.ammo[ammotype] = targetAmmoData.ammo[ammotype] + amount
+			else
+				userAmmoData.ammo[ammotype] = math.max(0, player1ammo - amount)
+				targetAmmoData.ammo[ammotype] = math.max(0, player2ammo + amount)
+			end
 			local charidentifier <const> = userAmmoData.charidentifier
 			local charidentifier2 <const> = targetAmmoData.charidentifier
 
@@ -722,6 +733,19 @@ local InventoryService <const> = {
 			local params2 <const> = { charidentifier = charidentifier2, ammo = json.encode(targetAmmoData.ammo) }
 			DB_SERVICE.ASYNC.UPDATE(query, params)
 			DB_SERVICE.ASYNC.UPDATE(query, params2)
+
+			if not CONFIG.MANUAL_WEAPON_RELOAD then
+				TriggerClientEvent("vorpinventory:updateuiammocount", _source, userAmmoData.ammo)
+				TriggerClientEvent("vorpinventory:updateuiammocount", target, targetAmmoData.ammo)
+				TriggerClientEvent("vorpCoreClient:addBullets", _source, ammotype, userAmmoData.ammo[ammotype])
+				TriggerClientEvent("vorpCoreClient:addBullets", target, ammotype, targetAmmoData.ammo[ammotype])
+				CORE.NotifyRightTip(_source, LANG.transferedammo .. SHARED_DATA.AMMO_LABEL[ammotype] .. " : " .. amount, 2000)
+				CORE.NotifyRightTip(target, LANG.recammo .. SHARED_DATA.AMMO_LABEL[ammotype] .. " : " .. amount, 2000)
+				TriggerClientEvent("vorp_inventory:ProcessingReady", _source)
+				TriggerClientEvent("vorpinventory:recammo", _source, userAmmoData)
+				TriggerClientEvent("vorpinventory:recammo", target, targetAmmoData)
+				return
+			end
 
 			TriggerClientEvent("vorp_inventory:ProcessingReady", _source)
 			local setAmmoToPed = true
@@ -1465,6 +1489,8 @@ local InventoryService <const> = {
 		end,
 
 		UPDATE = function(weaponsUpdate)
+			if not CONFIG.MANUAL_WEAPON_RELOAD then return end
+
 			local _source = source
 
 			local userAmmoData <const> = USERS_AMMO_DATA[_source]
@@ -1483,25 +1509,52 @@ local InventoryService <const> = {
 		end,
 
 		RELOADED = function(data)
+			if not CONFIG.MANUAL_WEAPON_RELOAD then return end
+
 			local _source <const> = source
 			local weaponId <const> = data.weaponId
 			local ammoType <const> = data.ammoType
-			local amount <const> = data.amount
+			local amount <const> = tonumber(data.amount) or 0
+			if amount <= 0 then return end
+
 			local weapon <const> = USERS_WEAPONS.default[weaponId]
 			if not weapon then return print("weapon not found :", weaponId) end
 
 			local userAmmoData <const> = USERS_AMMO_DATA[_source]
 			if not userAmmoData then return print("user ammo data not found :", _source) end
 
-			if amount > weapon:getDefaultClipSize() then
-				return print("cant take more than max clip size :", "for weapon :", weapon:getName())
+			for loadedAmmoType, loadedAmount in pairs(weapon:getAllAmmo()) do
+				loadedAmount = tonumber(loadedAmount) or 0
+				if loadedAmmoType ~= ammoType and loadedAmount > 0 then
+					CORE.NotifyRightTip(_source, "Unload current ammo first", 4000)
+					TriggerClientEvent("vorpinventory:recammo", _source, userAmmoData)
+					return
+				end
 			end
 
-			weapon:addAmmoToClip(ammoType, amount)
-			userAmmoData.ammo[ammoType] = math.max(0, userAmmoData.ammo[ammoType] - amount)
+			local beltAmount <const> = tonumber(userAmmoData.ammo[ammoType]) or 0
+			if beltAmount <= 0 then
+				TriggerClientEvent("vorpinventory:recammo", _source, userAmmoData)
+				return
+			end
+
+			local weaponAmmo <const> = tonumber(weapon:getAmmo(ammoType)) or 0
+			local maxClip <const> = weapon:getDefaultClipSize()
+			local roundsNeeded <const> = maxClip > 0 and math.max(0, maxClip - weaponAmmo) or amount
+			local amountToLoad <const> = math.min(amount, beltAmount, roundsNeeded)
+			if amountToLoad <= 0 then
+				TriggerClientEvent("vorpinventory:recammo", _source, userAmmoData)
+				return
+			end
+
+			weapon:addAmmoToClip(ammoType, amountToLoad)
+			userAmmoData.ammo[ammoType] = math.max(0, beltAmount - amountToLoad)
+			TriggerClientEvent("vorpinventory:recammo", _source, userAmmoData)
 		end,
 
 		ADD_BULLET = function(ammotype, amount, weaponid)
+			if not CONFIG.MANUAL_WEAPON_RELOAD then return end
+
 			local _source <const> = source
 
 			local sourceCharacter <const> = getCharacter(_source)
@@ -1688,6 +1741,20 @@ local InventoryService <const> = {
 			local userAmmoData <const> = USERS_AMMO_DATA[_source]
 			if not userAmmoData then return end
 
+			if not CONFIG.MANUAL_WEAPON_RELOAD then
+				ammoinfo.charidentifier = ammoinfo.charidentifier or userAmmoData.charidentifier
+				local encodedAmmo <const> = json.encode(ammoinfo.ammo)
+				local query <const> = "UPDATE characters Set ammo=@ammo WHERE charidentifier=@charidentifier"
+				local params <const> = { charidentifier = ammoinfo.charidentifier, ammo = encodedAmmo }
+
+				DB_SERVICE.ASYNC.UPDATE(query, params, function(result)
+					if result and _source then
+						USERS_AMMO_DATA[_source] = ammoinfo
+					end
+				end)
+				return
+			end
+
 			for ammoType, amount in pairs(ammoinfo.ammo) do
 				if not userAmmoData.ammo[ammoType] then
 					return print("ammotype not found :", ammoType)
@@ -1713,8 +1780,18 @@ local InventoryService <const> = {
 				if result[1] and result[1].ammo then
 					local ammo <const> = json.decode(result[1].ammo)
 					USERS_AMMO_DATA[_source] = { charidentifier = charidentifier, ammo = ammo }
-					LAST_SAVED_AMMO_DATA[charidentifier] = json.encode(ammo) -- so we dont update the database again.
+					if CONFIG.MANUAL_WEAPON_RELOAD then
+						LAST_SAVED_AMMO_DATA[charidentifier] = json.encode(ammo) -- so we dont update the database again.
+					end
 					if next(ammo) then
+						if not CONFIG.MANUAL_WEAPON_RELOAD then
+							for ammoType, ammoCount in pairs(ammo) do
+								ammoCount = tonumber(ammoCount)
+								if ammoCount and ammoCount > 0 then
+									TriggerClientEvent("vorpCoreClient:addBullets", _source, ammoType, ammoCount)
+								end
+							end
+						end
 						TriggerClientEvent("vorpinventory:loadammo", _source, USERS_AMMO_DATA[_source])
 					end
 				end
@@ -3168,8 +3245,6 @@ CreateThread(function()
 				end
 			end
 
-			updateAmmo()
-		else
 			updateAmmo()
 		end
 	end, updateTimer, {}, true)

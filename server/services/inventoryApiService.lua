@@ -942,6 +942,15 @@ local InventoryAPI = {
 
 			USERS_AMMO_DATA[_source].ammo = {}
 
+			if not CONFIG.MANUAL_WEAPON_RELOAD then
+				TriggerClientEvent("vorpinventory:updateuiammocount", _source, USERS_AMMO_DATA[_source].ammo)
+				TriggerClientEvent("vorpinventory:recammo", _source, USERS_AMMO_DATA[_source])
+				local params = { charId = charId, ammo = json.encode({}) }
+				DB_SERVICE.ASYNC.UPDATE('UPDATE characters SET ammo = @ammo WHERE charidentifier = @charId', params)
+
+				return respond(cb, true)
+			end
+
 			for _, weapon in pairs(USERS_WEAPONS.default) do
 				if weapon:getPropietary() == identifier and weapon:getCharId() == charId and weapon.currInv == "default" then
 					weapon:cleanAllAmmoFromClip()
@@ -973,6 +982,25 @@ local InventoryAPI = {
 			local charidentifier <const> = character.charIdentifier
 			local ammo <const> = USERS_AMMO_DATA[_source]?.ammo
 			if not ammo then return respond(cb, nil) end
+
+			if not CONFIG.MANUAL_WEAPON_RELOAD then
+				if ammo[ammoType] then
+					ammo[ammoType] = tonumber(ammo[ammoType]) + amount
+				else
+					ammo[ammoType] = amount
+				end
+
+				USERS_AMMO_DATA[_source].ammo = ammo
+				TriggerClientEvent("vorpinventory:updateuiammocount", _source, USERS_AMMO_DATA[_source].ammo)
+				TriggerClientEvent("vorpCoreClient:addBullets", _source, ammoType, ammo[ammoType])
+				TriggerClientEvent("vorpinventory:recammo", _source, USERS_AMMO_DATA[_source])
+
+				local query1 = 'UPDATE characters SET ammo = @ammo WHERE charidentifier = @charidentifier'
+				local params1 <const> = { charidentifier = charidentifier, ammo = json.encode(ammo) }
+				DB_SERVICE.ASYNC.UPDATE(query1, params1)
+
+				return respond(cb, true)
+			end
 
 			-- we need to add check here to see if max ammo doesnt go above the max allowed
 			local maxAmount <const> = SHARED_DATA.MAX_AMMO_BELT[ammoType]

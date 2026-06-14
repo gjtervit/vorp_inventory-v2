@@ -3,6 +3,7 @@
 RegisterNetEvent("vorpCoreClient:addItem", INVENTORY_API_SERVICE.ADD_ITEM)
 RegisterNetEvent("vorpCoreClient:subItem", INVENTORY_API_SERVICE.SUB_ITEM)
 RegisterNetEvent("vorpCoreClient:subWeapon", INVENTORY_API_SERVICE.SUB_WEAPON)
+RegisterNetEvent("vorpCoreClient:addBullets", INVENTORY_API_SERVICE.ADD_WEAPON_BULLETS)
 RegisterNetEvent("vorpCoreClient:subBullets", INVENTORY_API_SERVICE.SUB_WEAPON_BULLETS)
 
 RegisterNetEvent("vorp_inventory:addComponent", INVENTORY_API_SERVICE.ADD_COMPONENT)
@@ -15,5 +16,7 @@ RegisterNetEvent("vorp_inventory:SetItemDurability", INVENTORY_API_SERVICE.SET_I
 --ammo
 RegisterNetEvent("vorpinventory:recammo", AMMO_SERVICE.UPDATE_AMMO)
 RegisterNetEvent("vorpinventory:loadammo", AMMO_SERVICE.LOAD_AMMO)
+RegisterNetEvent("vorpinventory:updateuiammocount", AMMO_SERVICE.UPDATE_UI_AMMO_COUNT)
+RegisterNetEvent("vorpinventory:setammotoped", AMMO_SERVICE.SET_AMMO_TO_PED)
 RegisterNetEvent("vorpinventory:weaponClipUnloaded", AMMO_SERVICE.REMOVE_BULLETS_FROM_WEAPON)
 RegisterNetEvent("vorpinventory:ammoUpdateToggle", AMMO_SERVICE.AMMO_TOGGLE)

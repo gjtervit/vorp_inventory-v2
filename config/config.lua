@@ -23,8 +23,16 @@ CONFIG.RELOAD_WAIT                       = 2000 -- after reload must wait this m
 
 CONFIG.USE_RELOAD_SPEEDS                 = true -- If true, the reload speeds will be added to the weapons and you can change them in SHARED_DATA.WEAPONS
 
--- IF YOU DISABLE THIS A LOT OF FEATURES WILL BE DISABLED. LEAVE IT TO TRUE
-CONFIG.MANUAL_WEAPON_RELOAD              = true  -- If true, the player will have to manually reload their weapons, and other features will be added too like unload ammo from weapons etc.
+-- AMMO / RELOAD SYSTEM SELECTOR -- edit THIS line to switch systems:
+--   "v1" = automatic system: the gunbelt is the source of truth, ammo is pushed to the ped
+--          and the game's native reload pulls from it; throwables are not auto-restored on login.
+--   "v2" = manual system: manual reload, unload ammo from weapons, per-weapon clip tracking,
+--          throwables held as physical "1 in hand" items.
+CONFIG.AMMO_SYSTEM                       = "v1" -- "v1" or "v2"
+
+-- Derived from AMMO_SYSTEM above. Key name kept for upstream-update compatibility (it is
+-- referenced across client/server). Change AMMO_SYSTEM, not this line.
+CONFIG.MANUAL_WEAPON_RELOAD              = (CONFIG.AMMO_SYSTEM == "v2")
 
 CONFIG.USE_LANTERN_ON_BELT               = true  -- If true then lanterns will be put on belt
 

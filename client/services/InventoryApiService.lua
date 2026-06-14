@@ -63,6 +63,13 @@ local InventoryApi = {
         NUI_SERVICE.INVENTORY.UPDATE_WEAPON(weaponId)
     end,
 
+    ADD_WEAPON_BULLETS = function(bulletType, qty)
+        if CONFIG.MANUAL_WEAPON_RELOAD then return end
+
+        SetPedAmmoByType(PlayerPedId(), joaat(bulletType), qty)
+        NUI_SERVICE.INVENTORY.GET_LOAD()
+    end,
+
     ADD_COMPONENT = function(weaponId, component, category)
         local weapon <const> = PLAYER_INVENTORY.WEAPONS[weaponId]
         if not weapon then return end

@@ -47,8 +47,28 @@ local function useWeapon(data)
 	local isWeaponAGun = Citizen.InvokeNative(0x705BE297EEBDB95D, weapName)
 	local isWeaponOneHanded = Citizen.InvokeNative(0xD955FEE4B87AFA07, weapName)
 	local isArmed = IsPedArmed(ped, 4) == 1
-	local isThrowable = IsWeaponThrowable(weapon:getName()) == 1
-	local isMelee = IsWeaponMeleeWeapon(weapon:getName()) == 1
+	local isThrowable = IsWeaponThrowable(weapName) == 1
+	local isMelee = IsWeaponMeleeWeapon(weapName) == 1
+
+	if not CONFIG.MANUAL_WEAPON_RELOAD and not weapon:getUsed() and not weapon:getUsed2() then
+		local throwableAmmoType <const> = AMMO_SERVICE.GET_THROWABLE_AMMO_TYPE(weapName)
+		if throwableAmmoType then
+			local ammoCount = AMMO_SERVICE.GET_GUNBELT_AMMO(throwableAmmoType)
+			if ammoCount == nil then
+				ammoCount = GetPedAmmoByType(ped, joaat(throwableAmmoType))
+			end
+
+			if (tonumber(ammoCount) or 0) <= 0 then
+				CORE.NotifyRightTip("You need ammo in your gunbelt first", 3000)
+				weapon:setUsed(false, true)
+				weapon:setUsed2(false, true)
+				RemoveWeaponFromPed(ped, weapName, true, 0)
+				TriggerServerEvent("vorpinventory:setUsedWeapon", weaponId, false, false)
+				NUI_SERVICE.WEAPON.UPDATE_ICON(weapon:getId())
+				return
+			end
+		end
+	end
 
 	if (isWeaponAGun and isWeaponOneHanded) and isArmed and CONFIG.DUAL_WIELD then
 		AddWardrobeInventoryItem("CLOTHING_ITEM_M_OFFHAND_000_TINT_004", 0xF20B6B4A)
@@ -939,6 +959,7 @@ local nuiService = {
 					AddGoldItem = CONFIG.INVENTORY_UI.ADD_GOLD_ITEM,
 					AddDollarItem = true,
 					AddAmmoItem = true,
+					ManualWeaponReload = CONFIG.MANUAL_WEAPON_RELOAD,
 					UseRolItem = CONFIG.INVENTORY_UI.ADD_ROLL_ITEM,
 					AddRollItem = CONFIG.INVENTORY_UI.ADD_ROLL_ITEM,
 					WeightMeasure = CONFIG.INVENTORY_UI.WEIGHT_MEASURE,

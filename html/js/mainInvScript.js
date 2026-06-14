@@ -1215,7 +1215,7 @@ INVENTORY.MAIN = {
                         },
                     });
                 }
-                if (INVENTORY.MAIN.WEAPON_HAS_CLIP_AMMO(item)) {
+                if (Config.ManualWeaponReload && INVENTORY.MAIN.WEAPON_HAS_CLIP_AMMO(item)) {
                     actionSubs.push({
                         text: LANGUAGE.removebullets,
                         action: function () {
@@ -1223,7 +1223,7 @@ INVENTORY.MAIN = {
                         },
                     });
                 }
-                if ((item.used || item.used2) && item.type === "item_weapon" && Config.AddAmmoItem && INVENTORY.WEAPON.SHOW_AMMO_UI(item)) {
+                if ((item.used || item.used2) && item.type === "item_weapon" && Config.ManualWeaponReload && Config.AddAmmoItem && INVENTORY.WEAPON.SHOW_AMMO_UI(item)) {
                     const ammoAllowed = item.ammoAllowed;
                     if (ammoAllowed && ammoAllowed.length) {
                         const itemRef = item;
@@ -1257,7 +1257,7 @@ INVENTORY.MAIN = {
                         });
                     }
                 }
-                if ((item.used || item.used2) && INVENTORY.WEAPON.SHOW_AMMO_UI(item)) {
+                if ((item.used || item.used2) && Config.ManualWeaponReload && INVENTORY.WEAPON.SHOW_AMMO_UI(item)) {
                     actionSubs.push({
                         text: LANGUAGE.reloadweapon,
                         action: function () {
@@ -2226,6 +2226,20 @@ INVENTORY.MAIN = {
         }
     },
 
+    REFRESH_WEAPON_AMMO_BADGES: function () {
+        $("#inventoryElement .item, #inventoryFixedSlotsStrip .item, #secondInventoryElement .item").each(function () {
+            const item = $(this).data("item");
+            if (!item || item.type !== "item_weapon") return;
+
+            $(this).find(".weapon-ammo-count").remove();
+            $(this).append(INVENTORY.WEAPON.GET_AMMO_ICON(item));
+        });
+
+        if (typeof HOTBAR !== "undefined" && HOTBAR && typeof HOTBAR.REFRESH_SLOT_VISUALS === "function") {
+            HOTBAR.REFRESH_SLOT_VISUALS();
+        }
+    },
+
     WEAPON_USED_UPDATE: function (id, used, used2, weaponLiveStatus) {
         if (id == null) return;
         used = !!used;
@@ -2495,6 +2509,7 @@ $("document").ready(function () {
             Config.AddGoldItem = LuaConfig.AddGoldItem;
             Config.AddDollarItem = LuaConfig.AddDollarItem;
             Config.AddAmmoItem = LuaConfig.AddAmmoItem;
+            Config.ManualWeaponReload = !!LuaConfig.ManualWeaponReload;
             Config.UseRolItem = LuaConfig.UseRolItem;
             Config.AddRollItem = LuaConfig.AddRollItem;
             Config.WeightMeasure = LuaConfig.WeightMeasure;
@@ -2542,6 +2557,7 @@ $("document").ready(function () {
         if (event.data.action == "updateammo") {
             if (event.data.ammo) {
                 allplayerammo = event.data.ammo
+                INVENTORY.MAIN.REFRESH_WEAPON_AMMO_BADGES();
             }
         }
 
